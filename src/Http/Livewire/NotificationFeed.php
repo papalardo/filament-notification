@@ -4,7 +4,9 @@ namespace Webbingbrasil\FilamentNotification\Http\Livewire;
 
 use Carbon\Carbon;
 use Carbon\CarbonInterval;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Notifications\DatabaseNotification;
+use Webbingbrasil\FilamentNotification\Actions\ButtonAction;
 use Webbingbrasil\FilamentNotification\Concerns\HasActions;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
@@ -18,8 +20,8 @@ class NotificationFeed extends Component implements Forms\Contracts\HasForms
     use HasActions;
     use Forms\Concerns\InteractsWithForms;
 
-    protected $feed;
-    public $totalUnread;
+    protected Collection $feed;
+    public int $totalUnread = 0;
 
     public function boot()
     {
@@ -34,23 +36,11 @@ class NotificationFeed extends Component implements Forms\Contracts\HasForms
 
     public function hydrateNotificationFeed()
     {
-        $perPage = config('filament-notification::feed.perPage', 10);
-        $notifications = Auth::user()->notifications()->orderByDesc('created_at');
+        $perPage = config('filament-notification::feed.perPage', 30);
+        $notifications = Auth::user()->unreadNotifications()->latest();
 
-        $onlyTypes = config('filament-notification::feed.onlyTypes', []);
-
-        if (! empty($onlyTypes)) {
-            $this->feed->whereIn('type', $onlyTypes);
-        }
-
-        $interval = config('filament-notification::feed.interval');
-
-        if (! empty($interval)) {
-            $this->feed->where('created_at', '>=', Carbon::now()->sub(CarbonInterval::create($interval)));
-        }
-
-        $this->feed = $notifications->paginate($perPage);
-        $this->totalUnread = Auth::user()->unreadNotifications()->count();
+        $this->feed = $notifications->limit($perPage)->get();
+        $this->totalUnread = $notifications->count();
     }
 
     public function markAllAsRead()
@@ -72,6 +62,12 @@ class NotificationFeed extends Component implements Forms\Contracts\HasForms
     protected function resolveNotificationRecord(?string $key): ?Model
     {
         return DatabaseNotification::find($key);
+    }
+
+    public function markAsRead(DatabaseNotification $notification)
+    {
+        $notification->markAsRead();
+        $this->refresh();
     }
 
     protected function prepareActions(): void

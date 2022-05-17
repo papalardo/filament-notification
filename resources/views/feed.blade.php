@@ -4,16 +4,16 @@
 }"
     class="relative"
 >
+    <span wire:poll.10000ms="refresh"></span>
     <button
         x-on:click="isOpen = ! isOpen"
         @class([
             'flex items-center justify-center w-10 h-10 '
         ])
-
     >
-        <x-heroicon-o-bell class="h-5 -mr-1 align-text-top  @if($this->totalUnread) animate-swing @endif origin-top" />
-        @if($this->totalUnread)
-            <sup class="inline-flex items-center justify-center p-1 text-xs leading-none text-white bg-danger-600 rounded-full">
+        <x-heroicon-o-bell class="h-5 -mr-1 align-text-top  @if($this->totalUnread > 0) animate-swing @endif origin-top" />
+        @if($this->totalUnread > 0)
+            <sup class="inline-flex items-center justify-center p-1 text-xs leading-none text-white bg-danger-600 rounded-full w-5 h-5">
                 {{ $this->totalUnread }}
             </sup>
         @endif
@@ -30,61 +30,72 @@
         x-transition:leave-end="-translate-y-1 opacity-0"
         x-cloak
         @class([
-        'absolute z-10 right-0 rtl:right-auto rtl:left-0 mt-2 shadow-xl bg-white rounded-xl w-80 top-full',
-        'dark:border-gray-600 dark:bg-gray-700' => config('filament.dark_mode'),
-    ])
+            'absolute z-10 right-0 rtl:right-auto rtl:left-0 scr shadow-xl bg-white top-full max-h-[70vh]',
+            'w-[20rem] overflow-y-scroll rounded-lg scrollbar-hide',
+            'dark:border-gray-600 dark:bg-gray-700' => config('filament.dark_mode'),
+        ])
     >
-        @if(!empty($notifications))
-        <ul @class([
-        'py-1 px-1 space-y-1 overflow-hidden divide-y divide-gray-300',
-        'dark:border-gray-600 dark:bg-gray-700' => config('filament.dark_mode'),
-    ])>
-
+        @if($notifications->count() > 0)
+            <div class="px-2 pt-2">
+                <x-filament-notification::button
+                    wire:click="markAllAsRead"
+                    :color="config('filament-notification.buttons.markAllRead.color', 'primary')"
+                    :outlined="config('filament-notification.buttons.markAllRead.outlined', false)"
+                    :icon="config('filament-notification.buttons.markAllRead.icon', 'filament-notification::icon-check-all')"
+                    :size="config('filament-notification.buttons.markAllRead.size', 'sm')"
+                    class="w-full"
+                >
+                    {{ trans('filament-notification::component.buttons.markAllRead') }}
+                </x-filament-notification::button>
+            </div>
+            <ul @class([
+            'py-1 px-2 divide-y divide-gray-200 rounded-xl',
+            'dark:border-gray-600 dark:bg-gray-700' => config('filament.dark_mode'),
+        ])>
             @foreach($notifications as $notification)
                 <li @class([
-                    'relative',
+                    'relative py-2 px-1 space-y-2',
                     $notification->read() ? 'opacity-50' : '',
-                    ])>
-                        <div class="flex items-center w-full h-8 px-3 text-sm font-medium">
-                            @php
-                                $icon = match (Arr::get($notification->data, 'level', 'info')) {
-                                    'info' => 'heroicon-o-information-circle',
-                                    'warning' => 'heroicon-o-exclamation-circle',
-                                    'error' => 'heroicon-o-x-circle',
-                                    'success' => 'heroicon-o-check-circle',
-                                }
-                            @endphp
-                            @svg($icon, ['class' => 'mr-2 -ml-1 rtl:ml-2 rtl:-mr-1 w-6 h-6 text-gray-500'])
-
+                ])>
+                    <div class="flex justify-between">
+                        <div class="flex items-center w-full text-sm font-medium">
+                            @if($icon = match (Arr::get($notification->data, 'level')) {
+                            'info' => 'heroicon-o-information-circle',
+                            'warning' => 'heroicon-o-exclamation-circle',
+                            'error' => 'heroicon-o-x-circle',
+                            'success' => 'heroicon-o-check-circle',
+                            default => null,
+                        })
+                                <x-dynamic-component
+                                    :component="$icon"
+                                    class="mr-2 -ml-1 rtl:ml-2 rtl:-mr-1 w-6 h-6 text-gray-500"
+                                ></x-dynamic-component>
+                            @endif
                             {{ Arr::get($notification->data, 'title') }}
                         </div>
-                        <smal class="px-3 text-sm font-normal">{{ Arr::get($notification->data, 'message') }}</smal>
+                        <x-heroicon-o-x
+                            class="w-4 h-4 cursor-pointer"
+                            wire:click="markAsRead('{{ $notification->id }}')"
+                            wire:loading.hide="markAsRead('{{ $notification->id }}')"
+                        >
+                        </x-heroicon-o-x>
+                    </div>
+                    <small class="text-sm font-normal">{{ Arr::get($notification->data, 'message') }}</small>
 
-                        <x-filament-notification::actions :actions="$this->getCachedNotificationActions($notification->type)" :record="$notification" />
-                </li>
-            @endforeach
-        </ul>
-
-        {{ $notifications->links() }}
-
-
-        <div class="p-2">
-            <x-filament-notification::button
-                wire:click="markAllAsRead"
-                :color="config('filament-notification.buttons.markAllRead.color', 'primary')"
-                :outlined="config('filament-notification.buttons.markAllRead.outlined', false)"
-                :icon="config('filament-notification.buttons.markAllRead.icon', 'filament-notification::icon-check-all')"
-                :size="config('filament-notification.buttons.markAllRead.size', 'sm')"
-                class="w-full mt-2 h-8"
-            >
-                {{ trans('filament-notification::component.buttons.markAllRead') }}
-            </x-filament-notification::button>
-        </div>
+                    @if($actions = $this->getCachedNotificationActions($notification->type))
+                        <x-filament-notification::actions
+                            :actions="$this->getCachedNotificationActions($notification->type)"
+                            :record="$notification"
+                            class=""
+                        />
+                    @endif
+                    </li>
+                @endforeach
+            </ul>
         @else
-
-        <div class="flex items-center w-full h-8 px-3 text-sm font-medium">
-            Empty
-        </div>
+            <div class="text-center w-full py-3 text-sm font-medium">
+                Sem notificações
+            </div>
         @endif
     </div>
 

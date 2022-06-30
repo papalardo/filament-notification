@@ -4,7 +4,7 @@
 }"
     class="relative"
 >
-    <span wire:poll.10000ms="refresh"></span>
+    <span wire:poll.30000ms="refresh"></span>
     <button
         x-on:click="isOpen = ! isOpen"
         @class([

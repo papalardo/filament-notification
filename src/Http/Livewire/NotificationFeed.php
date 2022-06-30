@@ -36,10 +36,9 @@ class NotificationFeed extends Component implements Forms\Contracts\HasForms
 
     public function hydrateNotificationFeed()
     {
-        $perPage = config('filament-notification::feed.perPage', 30);
-        $notifications = Auth::user()->unreadNotifications()->latest();
+        $notifications = Auth::user()->getFeedNotification();
 
-        $this->feed = $notifications->limit($perPage)->get();
+        $this->feed = $notifications;
         $this->totalUnread = $notifications->count();
     }
 

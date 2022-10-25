@@ -18,10 +18,8 @@
     ],
     "require": {
         "php": "^8.0",
-        "spatie/laravel-package-tools": "^1.9.2",
-        "filament/filament": "^2.0"
-    },
-    "require-dev": {
+        "filament/filament": "^2.16",
+        "spatie/laravel-package-tools": "^1.9.2"
     },
     "autoload": {
         "psr-4": {
